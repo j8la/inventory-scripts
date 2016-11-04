@@ -90,7 +90,7 @@ if error_count == 0 :
 
             hosts['_meta']['hostvars'][h["hostname"]] = {
                 'id': h["id"],
-                'ipaddress':    h["ipaddress"],
+                'ansible_host': h["ipaddress"],
                 'vendor':       h["vmm_vendor"],
                 'version':      h["vmm_version"],
                 'product':      h["vmm_product"],

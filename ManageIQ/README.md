@@ -1,5 +1,4 @@
 # ManageIQ Inventory
-=====
 
 This dynamic inventory script for Ansible Tower uses ManageIQ API to get the hypervisors and the virtual machines. It has been tested with the ManageIQ 4.1 appliance and Ansible Tower 3.0.3 on CentOS 7.  
 
@@ -10,7 +9,7 @@ pip install requests
 ```
 
 ### How to
-At first, copy the *manageiq-inventory.json* file in */etc/ansible* on the Ansible Tower host. Then edit them :
+At first, copy the *manageiq-inventory.json* file in */etc/ansible* on the Ansible Tower host. Then edit it :
 ```json
 {
     "server":"",       
@@ -100,7 +99,7 @@ The output of the script is :
       "vmhost1.mydomain.lan": {
         "buildnumber": "1623387",
         "id": 2,
-        "ipaddress": "192.168.0.11",
+        "ansible_host": "192.168.0.11",
         "product": "ESXi",
         "vendor": "vmware",
         "version": "5.5.0"
@@ -108,7 +107,7 @@ The output of the script is :
       "vmhost2.mydomain.lan": {
         "buildnumber": "1623387",
         "id": 1,
-        "ipaddress": "192.168.0.12",
+        "ansible_host": "192.168.0.12",
         "product": "ESXi",
         "vendor": "vmware",
         "version": "5.5.0"
