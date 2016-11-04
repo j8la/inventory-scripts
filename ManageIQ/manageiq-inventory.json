@@ -1,0 +1,6 @@
+{
+    "server":"",
+    "user":"admin",
+    "password":"",
+    "ssl_verify":false
+}
