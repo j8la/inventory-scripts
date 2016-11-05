@@ -1,0 +1,37 @@
+- hosts: 127.0.0.1
+  gather_facts: no
+  become: true
+  become_user: root
+  vars:
+    file: vsphere.inventory
+
+  tasks:
+
+    - name: Check for pyVmomi python module
+      pip: name=pyVmomi
+
+    - name: Check vcenter_hostname var
+      fail: msg="vcenter_hostname is not defined"
+      when: vcenter_hostname is not defined or ( vcenter_hostname is defined and vcenter_hostname == "" )
+
+    - name: Check vcenter_user var
+      fail: msg="vcenter_user is not defined"
+      when: vcenter_user is not defined or ( vcenter_user is defined and vcenter_user == "" )
+
+    - name: Check vcenter_pass var
+      fail: msg="vcenter_pass is not defined"
+      when: vcenter_pass is not defined or ( vcenter_pass is defined and vcenter_pass == "" )
+
+    - name: Check inventory_name var
+      fail: msg="inventory_name is not defined"
+      when: inventory_name is not defined or ( inventory_name is defined and inventory_name == "" )
+
+    - name: Execute vSphere inventory to temporary file
+      command: "chdir={{ playbook_dir }} python vsphere-inventory.py -s {{ vcenter_hostname }} -u {{ vcenter_user }} -p {{ vcenter_pass }} -i {{ file }}"
+
+    - name: Import inventory to Tower
+      command: "chdir={{ playbook_dir }} tower-manage inventory_import --source={{ file }} --inventory-name={{ inventory_name }}"
+
+    - name: Delete temporary file
+      file: "path={{ playbook_dir }}/{{ file }} state=absent"
+      
