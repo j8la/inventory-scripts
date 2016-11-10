@@ -15,13 +15,15 @@ At first, copy the *manageiq-inventory.json* file in */etc/ansible* on the Ansib
     "server":"",       
     "user":"admin",
     "password":"",
-    "ssl_verify":false
+    "ssl_verify":false,
+    "vm_filter":[]
 }
 ```
 - server : The ManageIQ server
 - user : ManageIQ user
 - password : ManageIQ password
 - ssl_verify : If you don't use a self-signed certificate, change it to true
+- vm_filter : If you want to exclude specific virtual machines from inventory (for an example, ManageIQ, vCenter, Tower...), insert them in this array
 
 Secondly, copy the *manageiq-inventory.py* file contents, add a new custom inventory in Tower (SETTINGS / INVENTORY SCRIPTS) and paste them.
 

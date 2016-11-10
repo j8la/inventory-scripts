@@ -2,5 +2,6 @@
     "server":"",
     "user":"admin",
     "password":"",
-    "ssl_verify":false
+    "ssl_verify":false,
+    "vm_filter":[]
 }
