@@ -8,6 +8,8 @@ If you configure a job template, the connection must not be local (anyway, local
 
 The method is to configure the GitHub connection at first in a project to keep the scripts up to date, configure the credentials with the necessary sudo command and then configure a job template using the playbook. Personaly i prefer this way instead the classical way. Maybe i'm wrong but this works well for me :)
 
+The type of connection has changed in playbook with last update (09/06/2017) for working with Tower 3.1.3. Well, the problems with local playbooks execution has been finally resolved!
+
 ## How to use (standalone)
 usage: vsphere-inventory.py [-h] -s SERVER -u USERNAME -p PASSWORD -i INVENTORYFILE 
 
@@ -56,7 +58,7 @@ _Hypervisors_
 
 
 ## License
-Copyright (C) 2016 - Julien Blanc  
+Copyright (C) 2017 - Julien Blanc  
 
 This program is free software: you can redistribute it and/or modify  
 it under the terms of the GNU General Public License as published by  
