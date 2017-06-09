@@ -1,7 +1,6 @@
-- hosts: 127.0.0.1
+- hosts: localhost
   gather_facts: no
-  become: true
-  become_user: root
+  become: false
   vars:
     file: vsphere.inventory
 
