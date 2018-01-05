@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# pylint: disable=I0011,C0103,W0703
+# pylint: disable=I0011,C0103,W0703,E0611
 
 """
-Copyright (C) 2017 - Julien Blanc
+Copyright (C) 2018 - Julien Blanc
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,10 +26,13 @@ import warnings
 import atexit
 import platform
 import ssl
+from decimal import Decimal, ROUND_UP
 
 from pyVim.connect import SmartConnect, Disconnect
 from pyVmomi import vim
 
+# SCRIPT CONFIG
+configFile = '/etc/ansible/vsphere-inventory.json'
 
 # INVENTORY MODEL
 hosts = {
@@ -59,6 +62,164 @@ def createVIew(instance, obj):
     return containerView.view
 
 
+#------------- Get IP with a configured domain name at first
+def getVmIpWithDomainName(netcfg):
+    """
+    GET IP WITH A CONFIGURED DOMAIN NAME AT FIRST
+    """
+
+    ipaddr = None
+
+    for nic in netcfg:
+        if hasattr(nic.dnsConfig, 'domainName'):
+            if nic.dnsConfig.domainName != '':
+                ipaddr = nic.ipAddress[0]
+
+    if ipaddr is None:
+        ipaddr = netcfg[0].ipAddress[0]
+
+    return ipaddr
+
+
+#------------- Get IP from host and vmk0
+def getHostIpVMK0(netcfg):
+    """
+    GET IP FROM HOST AND VMK0
+    """
+
+    ipaddr = None
+
+    for vnic in netcfg:
+        if vnic.device == 'vmk0':
+            ipaddr = vnic.spec.ip.ipAddress
+
+    return ipaddr
+
+
+#------------- Get VM Storage
+def getVMStorage(vm):
+    """
+    GET VM STORAGE
+    """
+
+    storage = []
+
+    for disk in vm:
+        size = Decimal(
+            str(float(disk.capacity)/1024/1024/1024)
+            ).quantize(Decimal('.01'), rounding=ROUND_UP)
+        free = Decimal(
+            str(float(disk.freeSpace)/1024/1024/1024)
+            ).quantize(Decimal('.01'), rounding=ROUND_UP)
+        used = size - free
+        usedPer = Decimal(
+            str((float(used)/float(size))*100)
+            ).quantize(Decimal('.01'), rounding=ROUND_UP)
+
+        storage.append({
+            'path': disk.diskPath,
+            'size': float(size),
+            'free': float(free),
+            'used': float(used),
+            'usedPer': float(usedPer)
+        })
+
+    return storage
+
+
+#------------- Get VM Memory
+def getVMMemory(vm):
+    """
+    GET VM MEMORY
+    """
+
+    size = vm.config.memorySizeMB
+    guest = vm.quickStats.guestMemoryUsage
+    usedPer = Decimal(
+        str((float(guest)/float(size))*100)
+        ).quantize(Decimal('.01'), rounding=ROUND_UP)
+
+    memory = {
+        'size': size,
+        'guest': guest,
+        'usedPer': float(usedPer)
+    }
+
+    return memory
+
+
+#------------- Get Host Memory
+def getHostMemory(host):
+    """
+    GET HOST MEMORY
+    """
+
+    size = int(round(host.hardware.memorySize/1024/1024))
+    used = host.quickStats.overallMemoryUsage
+    usedPer = Decimal(
+        str((float(used)/float(size))*100)
+        ).quantize(Decimal('.01'), rounding=ROUND_UP)
+
+    memory = {
+        'size': size,
+        'used': used,
+        'usedPer': float(usedPer)
+    }
+
+    return memory
+
+
+#------------- Get VM CPU Usage
+def getVMCPU(vm):
+    """
+    GET VM CPU USAGE
+    """
+
+    numCpu = vm.config.numCpu
+    totalMhz = vm.runtime.maxCpuUsage
+    usedMhz = vm.quickStats.overallCpuUsage
+    usedPer = Decimal(
+        str((float(usedMhz)/float(totalMhz))*100)
+        ).quantize(Decimal('.01'), rounding=ROUND_UP)
+
+    cpu = {
+        'numCpu': numCpu,
+        'totalMhz': totalMhz,
+        'usedMhz': usedMhz,
+        'usedPer': float(usedPer)
+    }
+
+    return cpu
+
+#------------- Get Host CPU informations and Usage
+def getHostCPU(host):
+    """
+    GET HOST CPU
+    """
+
+    model = host.hardware.cpuModel
+    numCpu = host.hardware.numCpuPkgs
+    numCores = host.hardware.numCpuCores
+    numThreads = host.hardware.numCpuThreads
+    totalMhz = host.hardware.cpuMhz * numCores
+    usedMhz = host.quickStats.overallCpuUsage
+    usedPer = Decimal(
+        str((float(usedMhz)/float(totalMhz))*100)
+        ).quantize(Decimal('.01'), rounding=ROUND_UP)
+
+    cpu = {
+        'model': model,
+        'sockets': numCpu,
+        'cores': numCores,
+        'threads': numThreads,
+        'totalMhz': totalMhz,
+        'usedMhz': usedMhz,
+        'usedPer': float(usedPer)
+    }
+
+    return cpu
+
+
 #------------- Get VMS
 def get_vm(vm):
     """
@@ -70,16 +231,17 @@ def get_vm(vm):
         hosts['VirtualMachines']['hosts'].append(summary.config.name)
 
         hosts['_meta']['hostvars'][summary.config.name] = {
-            'ansible_host':     str(summary.guest.ipAddress),
+            'ansible_host':     getVmIpWithDomainName(vm.guest.net),
+            'hostname':         summary.guest.hostName,
             'folder':           vm.parent.name,
             'system':           summary.config.guestFullName,
-            'memory':           summary.config.memorySizeMB,
-            'numCpu':           summary.config.numCpu,
+            'cpu':              getVMCPU(summary),
+            'memory':           getVMMemory(summary),
             'numNics':          summary.config.numEthernetCards,
-            'storage':          round((summary.storage.committed+
-                                       summary.storage.uncommitted)/1024/1024/1024, 2),
+            'storage':          getVMStorage(vm.guest.disk),
             'status':           summary.runtime.powerState,
-            'bootTime':         str(summary.runtime.bootTime)
+            'bootTime':         str(summary.runtime.bootTime),
+            'vmTools':          summary.guest.toolsStatus
         }
 
 
@@ -93,15 +255,15 @@ def get_host(host):
     hosts['Hypervisors']['hosts'].append(summary.config.name)
 
     hosts['_meta']['hostvars'][summary.config.name] = {
-        'ansible_host':     str(summary.managementServerIp),
+        'ansible_host':     getHostIpVMK0(host.config.network.vnic),
         'system':           summary.config.product.fullName,
-        'memory':           int(round(summary.hardware.memorySize/1024/1024)),
-        'numCpu':           summary.hardware.numCpuPkgs,
-        'numCores':         summary.hardware.numCpuCores,
-        'numThreads':       summary.hardware.numCpuThreads,
+        'memory':           getHostMemory(summary),
+        'cpu':              getHostCPU(summary),
         'numNics':          summary.hardware.numNics,
         'status':           summary.runtime.powerState,
-        'bootTime':         str(summary.runtime.bootTime)
+        'bootTime':         str(summary.runtime.bootTime),
+        'vendor':           summary.hardware.vendor,
+        'model':            summary.hardware.model
     }
 
 
@@ -116,7 +278,7 @@ def main():
     error = False
 
     # GET CONNEXION PARAMETERS
-    with open('/etc/ansible/vsphere-inventory.json') as opts_file:
+    with open(configFile) as opts_file:
         opts = json.load(opts_file)
 
     vcenter = opts["vcenter"]

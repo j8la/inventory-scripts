@@ -1,6 +1,6 @@
 # vSphere Inventory (Classic method)
 
-This dynamic inventory script for Ansible Tower uses pyVmomi to get the hypervisors and the virtual machines. It has been tested with vSphere 5.5, Ansible Tower 3.1.3, Python 2.7.6/2.7.9/3.x.
+This dynamic inventory script for Ansible Tower uses pyVmomi to get the hypervisors and the virtual machines. It has been tested with vSphere 5.5 to 6.5, Ansible Tower 3.1.3 to 3.2.2, Python 2.7.6/2.7.9/3.x.
 
 ### Prerequisites
 You have to install the following with pip on the Ansible Tower host :
@@ -27,6 +27,11 @@ Secondly, copy the *vsphere-inventory.py* file contents, add a new custom invent
 
 Lastly, in INVENTORIES, add a new inventory, add a group and select de custom inventory script.
 
+You can change the path and the name of the credential file at the line #35 :
+```
+configFile = '/etc/ansible/vsphere-inventory.json'
+```
+
 ### Ouput example
 ```json
 {
@@ -46,47 +51,137 @@ Lastly, in INVENTORIES, add a new inventory, add a group and select de custom in
     "hostvars": {
       "VM1": {
         "ansible_host": "192.168.0.1",
-        "bootTime": "2017-05-31 15:52:42.850803+00:00",
+        "bootTime": "2017-12-22 10:13:04.796560+00:00",
+        "cpu": {
+          "numCpu": 2,
+          "totalMhz": 5198,
+          "usedMhz": 25,
+          "usedPer": 0.48
+        },
         "folder": "Infrastructure",
-        "memory": 3072,
-        "numCpu": 2,
+        "hostname": "vm1.mydomain.lan",
+        "memory": {
+          "guest": 983,
+          "size": 8192,
+          "usedPer": 12.0
+        },
         "numNics": 1,
         "status": "poweredOn",
-        "storage": 128.11,
-        "system": "SUSE Linux Enterprise 11 (64-bit)"
+        "storage": [
+          {
+            "free": 179.54,
+            "path": "/",
+            "size": 181.98,
+            "used": 2.44,
+            "usedPer": 1.35
+          },
+          {
+            "free": 0.81,
+            "path": "/boot",
+            "size": 1.0,
+            "used": 0.19,
+            "usedPer": 19.0
+          },
+          {
+            "free": 19.96,
+            "path": "/home",
+            "size": 20.0,
+            "used": 0.04,
+            "usedPer": 0.2
+          },
+          {
+            "free": 179.54,
+            "path": "/tmp",
+            "size": 181.98,
+            "used": 2.44,
+            "usedPer": 1.35
+          },
+          {
+            "free": 179.54,
+            "path": "/var/tmp",
+            "size": 181.98,
+            "used": 2.44,
+            "usedPer": 1.35
+          }
+        ],
+        "system": "CentOS 7 (64-bit)",
+        "vmTools": "toolsOk"
       },
       "vmhost1.mydomain.lan": {
         "ansible_host": "192.168.0.11",
-        "bootTime": "2017-05-31 15:48:16.240673+00:00",
-        "memory": 16268,
-        "numCores": 4,
-        "numCpu": 1,
+        "bootTime": "2017-12-04 11:09:50.512999+00:00",
+        "cpu": {
+          "cores": 32,
+          "model": "Intel(R) Xeon(R) CPU E5-2697A v4 @ 2.60GHz",
+          "sockets": 2,
+          "threads": 64,
+          "totalMhz": 83168,
+          "usedMhz": 6013,
+          "usedPer": 7.23
+        },
+        "memory": {
+          "size": 262033,
+          "used": 40740,
+          "usedPer": 15.55
+        },
+        "model": "SSG-6028R-E1CR12T",
         "numNics": 4,
-        "numThreads": 4,
         "status": "poweredOn",
-        "system": "VMware ESXi 5.5.0 build-1623387"
+        "system": "VMware ESXi 6.5.0 build-6765664",
+        "vendor": "Supermicro"
       },
       "vmhost2.mydomain.lan": {
-        "ansible_host": "None",
-        "bootTime": "2016-10-03 14:00:20.323000+00:00",
-        "memory": 8091,
-        "numCores": 2,
-        "numCpu": 1,
-        "numNics": 1,
-        "numThreads": 2,
-        "status": "unknown",
-        "system": "VMware ESXi 5.1.0 build-799733"
+        "ansible_host": "192.168.0.12",
+        "bootTime": "2017-12-04 11:33:26.111000+00:00",
+        "cpu": {
+          "cores": 32,
+          "model": "Intel(R) Xeon(R) CPU E5-2697A v4 @ 2.60GHz",
+          "sockets": 2,
+          "threads": 64,
+          "totalMhz": 83168,
+          "usedMhz": 6026,
+          "usedPer": 7.25
+        },
+        "memory": {
+          "size": 262033,
+          "used": 53212,
+          "usedPer": 20.31
+        },
+        "model": "SSG-6028R-E1CR12T",
+        "numNics": 4,
+        "status": "poweredOn",
+        "system": "VMware ESXi 6.5.0 build-6765664",
+        "vendor": "Supermicro"
       },
       "VM2": {
         "ansible_host": "192.168.0.2",
-        "bootTime": "2016-10-03 14:02:01.131000+00:00",
+        "bootTime": "2017-12-04 12:54:51.627908+00:00",
+        "cpu": {
+          "numCpu": 2,
+          "totalMhz": 5198,
+          "usedMhz": 0,
+          "usedPer": 0.0
+        },
         "folder": "Infrastructure",
-        "memory": 256,
-        "numCpu": 1,
+        "hostname": "vm2.mydomain.lan",
+        "memory": {
+          "guest": 983,
+          "size": 8192,
+          "usedPer": 12.0
+        },
         "numNics": 1,
         "status": "poweredOn",
-        "storage": 783.09,
-        "system": "Microsoft Windows Server 2003 Standard (32-bit)"
+        "storage": [
+          {
+            "free": 72.55,
+            "path": "C:\\",
+            "size": 109.51,
+            "used": 36.96,
+            "usedPer": 33.76
+          }
+        ],
+        "system": "Microsoft Windows Server 2016 (64-bit)",
+        "vmTools": "toolsOk"
       }
     }
   }
