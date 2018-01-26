@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# pylint: disable=I0011,C0103,W0703,E0611
+# pylint: disable=I0011,C0103,W0703,E0611,W0702
 
 """
 Copyright (C) 2018 - Julien Blanc
@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Requirements :
 - pip install pyVmomi
+- pip install dnspython
 """
 
 import json
@@ -26,13 +27,26 @@ import warnings
 import atexit
 import platform
 import ssl
+from timeit import default_timer as timer
+from threading import Thread
 from decimal import Decimal, ROUND_UP
+import dns.resolver
 
 from pyVim.connect import SmartConnect, Disconnect
 from pyVmomi import vim
 
-# SCRIPT CONFIG
+
+############################################################# BEGIN SCRIPT CONFIG
 configFile = '/etc/ansible/vsphere-inventory.json'
+dnsServers = []
+benchmarkMode = False
+############################################################# END SCRIPT CONFIG
+
+
+#------------- PARAMS
+# BENCHMARK
+if benchmarkMode is True:
+    start = timer()
 
 # INVENTORY MODEL
 hosts = {
@@ -46,6 +60,28 @@ hosts['VirtualMachines']['hosts'] = []
 hosts['_meta'] = {
     'hostvars': {}
 }
+
+# DNS RESOLVER
+dnsResolver = dns.resolver.Resolver()
+if len(dnsServers) > 0:
+    dnsResolver.nameservers = dnsServers
+
+
+#------------- MULTITHREAD
+class getInfo(Thread):
+    """
+    GET INFO
+    """
+    def __init__(self, infoType, item):
+        Thread.__init__(self)
+        self.infoType = infoType
+        self.item = item
+
+    def run(self):
+        if self.infoType == "vm":
+            get_vm(self.item)
+        if self.infoType == "host":
+            get_host(self.item)
 
 
 #------------- Create view from vCenter
@@ -71,9 +107,15 @@ def getVmIpWithDomainName(netcfg):
     ipaddr = None
 
     for nic in netcfg:
-        if hasattr(nic.dnsConfig, 'domainName'):
-            if nic.dnsConfig.domainName != '':
-                ipaddr = nic.ipAddress[0]
+
+        for item in nic.ipConfig.ipAddress:
+            req = '.'.join(reversed(item.ipAddress.split("."))) + ".in-addr.arpa"
+
+            try:
+                dnsResolver.query(req, "PTR")[0].to_text()
+                ipaddr = item.ipAddress
+            except:
+                pass
 
     if ipaddr is None:
         ipaddr = netcfg[0].ipAddress[0]
@@ -228,11 +270,16 @@ def get_vm(vm):
     summary = vm.summary
 
     if summary.config.template != True:
+
+        ip = getVmIpWithDomainName(vm.guest.net)
+        req = '.'.join(reversed(ip.split("."))) + ".in-addr.arpa"
+        host = dnsResolver.query(req, "PTR")[0].to_text()
+
         hosts['VirtualMachines']['hosts'].append(summary.config.name)
 
         hosts['_meta']['hostvars'][summary.config.name] = {
-            'ansible_host':     getVmIpWithDomainName(vm.guest.net),
-            'hostname':         summary.guest.hostName,
+            'ansible_host':     ip,
+            'hostname':         host,
             'folder':           vm.parent.name,
             'system':           summary.config.guestFullName,
             'cpu':              getVMCPU(summary),
@@ -312,19 +359,41 @@ def main():
     if error is not True:
 
         # GET HOSTS
-        children = createVIew(service_instance, [vim.HostSystem])
+        host_children = createVIew(service_instance, [vim.HostSystem])
 
-        for child in children:
-            get_host(child)
+        # Prepare threads
+        host_thread = [None] * len(host_children)
+        host_index = 0
+
+        for child in host_children:
+            host_thread[host_index] = getInfo("host", child)
+            host_thread[host_index].start()
+            host_index += 1
 
         # GET VMs
-        children = createVIew(service_instance, [vim.VirtualMachine])
+        vm_children = createVIew(service_instance, [vim.VirtualMachine])
 
-        for child in children:
-            get_vm(child)
+        # Prepare threads
+        vm_thread = [None] * len(vm_children)
+        vm_index = 0
+
+        for child in vm_children:
+            vm_thread[vm_index] = getInfo("vm", child)
+            vm_thread[vm_index].start()
+            vm_index += 1
+
+        # Wait for all threads to finish
+        for t in host_thread:
+            t.join()
+
+        for v in vm_thread:
+            v.join()
 
         # EXPORT JSON TO STANDARD OUTPUT
         print(json.dumps(hosts, sort_keys=True, indent=2))
+
+        if benchmarkMode is True:
+            print("Execution time: " + str(round(timer() - start, 3)) + "s")
 
 
 # START PROGRAM

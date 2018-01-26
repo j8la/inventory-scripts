@@ -1,11 +1,12 @@
-# vSphere Inventory (Classic method)
+# vSphere Dynamic Inventory for Ansible Tower
 
-This dynamic inventory script for Ansible Tower uses pyVmomi to get the hypervisors and the virtual machines. It has been tested with vSphere 5.5 to 6.5, Ansible Tower 3.1.3 to 3.2.2, Python 2.7.6/2.7.9/3.x.
+This dynamic inventory script for Ansible Tower uses pyVmomi to get the hypervisors and the virtual machines. It has been tested with vSphere 5.5 to 6.5, Ansible Tower 3.1.3 to 3.2.2, Python 2.7.6/2.7.9/3.x. The API requests to vCenter are multithreaded.
 
 ### Prerequisites
 You have to install the following with pip on the Ansible Tower host :
 ```
 pip install pyvmomi
+pip install dnspython
 ```
 
 ### How to
@@ -27,9 +28,14 @@ Secondly, copy the *vsphere-inventory.py* file contents, add a new custom invent
 
 Lastly, in INVENTORIES, add a new inventory, add a group and select de custom inventory script.
 
-You can change the path and the name of the credential file at the line #35 :
+You can change the path and the name of the credential file at the line #40 :
 ```
 configFile = '/etc/ansible/vsphere-inventory.json'
+```
+
+DNSPython library is used to resolve virtual machines IP to hostnames and detect which is the primary IP on each of them (because the information given by Vmware API is incomplete depending of the OS). You can specify other DNS servers than those defined on the OS with the array on line #41:
+```
+dnsServers = ["x.x.x.x","x.x.x.y"]
 ```
 
 ### Ouput example
@@ -189,7 +195,7 @@ configFile = '/etc/ansible/vsphere-inventory.json'
 ```
 
 ### License
-Copyright (C) 2017 - Julien Blanc  
+Copyright (C) 2018 - Julien Blanc  
 
 This program is free software: you can redistribute it and/or modify  
 it under the terms of the GNU General Public License as published by  
